@@ -213,8 +213,16 @@ int main() {
 
         // Strzelanie
         if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            bullets.emplace_back(playerSprite.getPosition().x + 25 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-            shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.01f;
+            if (currentLevel < 10) {
+                bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.01f;
+            }
+            else {
+                bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.005f;
+            }
+            
         }
 
         // Aktualizacja cooldownu
