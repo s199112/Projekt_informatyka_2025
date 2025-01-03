@@ -33,6 +33,10 @@ int score = 0;
 float enemyMoveCooldown = 0.6f; // Czas miêdzy ruchami przeciwników
 float enemyMoveTimer = 0.0f;
 
+// Pickup
+sf::Texture pickupTexture;
+
+int pickupsOnLevel = 0; // Licznik Pickupów na poziom
 
 // Klasy do gry
 class Bullet {
@@ -92,6 +96,30 @@ public:
         return lifetime > 0;
     }
 };
+// Pickupy
+class Pickup {
+public:
+    sf::Sprite sprite;
+    bool active;
+
+    Pickup(float x, float y, const sf::Texture& texture) {
+        sprite.setTexture(texture);
+        sprite.setScale(0.02f, 0.02f);
+        sprite.setPosition(x, y);
+        active = true;
+    }
+
+    void update(float deltaTime) {
+        sprite.move(0, 100.0f * deltaTime); // Powolny ruch w dó³
+        if (sprite.getPosition().y > WINDOW_HEIGHT) {
+            active = false; // Dezaktywacja, jeœli wyjdzie poza ekran
+        }
+    }
+
+    sf::FloatRect getBounds() const {
+        return sprite.getGlobalBounds();
+    }
+};
 
 int main() {
     // Inicjalizacja okna gry
@@ -105,7 +133,7 @@ int main() {
     }
     // Inicjalizacja gracza
     sf::Texture playerTexture;
-    if (!playerTexture.loadFromFile("player.png")) { // Zmieñ "player.png" na nazwê pliku z grafik¹ gracza
+    if (!playerTexture.loadFromFile("player.png")) { 
         std::cerr << "Failed to load player texture!" << std::endl;
         return -1; // Zakoñcz program, jeœli nie uda siê za³adowaæ tekstury
     }
@@ -113,6 +141,12 @@ int main() {
     playerSprite.setTexture(playerTexture);
     playerSprite.setScale(0.07f, 0.07f); // Skalowanie
     playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
+
+    //inicjalizacja pickupów
+    if (!pickupTexture.loadFromFile("pickup.png")) { 
+        std::cerr << "Failed to load pickup texture!" << std::endl;
+        return -1;
+    }
 
     // Menu pocz¹tkowe
     bool inMenu = true;
@@ -132,6 +166,7 @@ int main() {
     std::vector<Bullet> bullets;
     std::vector<Enemy> enemies;
     std::vector<Explosion> explosions;
+    std::vector<Pickup> pickups;
     //kolor t³a
     sf::Color backgroundColor = sf::Color::Black; // Domyœlny kolor t³a
     float backgroundFlashTimer = 0.0f;           // Czas trwania czerwonego t³a
@@ -274,9 +309,15 @@ int main() {
                     score += 5*currentLevel;
                     bullet.shape.setPosition(-100, -100); // Usuniêcie pocisku z ekranu
                     explosions.emplace_back(enemy.sprite.getPosition().x + ENEMY_SIZE, enemy.sprite.getPosition().y + ENEMY_SIZE);
+                    // Generowanie Pickupów z prawdopodobieñstwem, jeœli limit nie zosta³ osi¹gniêty
+                    if (pickupsOnLevel < 5 && (std::rand() % 100) < 10) { // 30% szansa na wypadniêcie
+                        pickups.emplace_back(enemy.sprite.getPosition().x+15, enemy.sprite.getPosition().y, pickupTexture);
+                        pickupsOnLevel++;
+                    }
                 }
             }
         }
+
         //aktualizacja eksplozji
         for (auto it = explosions.begin(); it != explosions.end();) {
             it->update(deltaTime);
@@ -307,7 +348,22 @@ int main() {
                 backgroundColor = sf::Color::Black; // Przywróæ domyœlny kolor t³a
             }
         }
+        // Aktualizacja i kolizje Pickupów
+        for (auto it = pickups.begin(); it != pickups.end();) {
+            it->update(deltaTime);
 
+            if (it->active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
+                // Efekt po podniesieniu Pickupu
+                score += 1000 * currentLevel; // Nagroda punktowa (lub inny efekt)
+                it = pickups.erase(it); // Usuñ Pickup po kolizji
+            }
+            else if (!it->active) {
+                it = pickups.erase(it); // Usuñ nieaktywny Pickup
+            }
+            else {
+                ++it;
+            }
+        }
         // Sprawdzenie warunków wygranej/przegranej
         bool allEnemiesDefeated = true;
         for (const auto& enemy : enemies) { 
@@ -324,6 +380,8 @@ int main() {
         
         if (allEnemiesDefeated) {
             currentLevel++;
+            pickups.clear(); // Usuñ wszystkie pozosta³e Pickupy
+            pickupsOnLevel = 0; // Zresetuj licznik
             playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
             if (enemyMoveCooldown > 0.1) {
                 enemyMoveCooldown -= 0.05f; // Zwiêkszenie szybkoœci ruchu
@@ -354,6 +412,10 @@ int main() {
         // Rysowanie eksplozji
         for (const auto& explosion : explosions) {
             window.draw(explosion.shape);
+        }
+        // Rysowanie Pickupów
+        for (const auto& pickup : pickups) {
+            window.draw(pickup.sprite);
         }
 
         // Wyœwietlanie punktów, przeciwników, LVL i ¿yæ
