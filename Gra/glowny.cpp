@@ -37,6 +37,8 @@ float enemyMoveTimer = 0.0f;
 sf::Texture pickupTexture;
 
 int pickupsOnLevel = 0; // Licznik Pickupów na poziom
+bool pickupEffectActive = false; // Czy efekt jest aktywny
+float pickupEffectTimer = 0.0f; // Pozosta³y czas efektu
 
 // Klasy do gry
 class Bullet {
@@ -231,6 +233,13 @@ int main() {
             window.display();
             continue;
         }
+        // Aktualizacja efektu z pickupu
+        if (pickupEffectActive) {
+            pickupEffectTimer -= deltaTime;
+            if (pickupEffectTimer <= 0.0f) {
+                pickupEffectActive = false; // Wy³¹cz efekt po 10 sekundach
+            }
+        }
 
         // Ruch gracza
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && playerSprite.getPosition().x > 0) {
@@ -247,15 +256,30 @@ int main() {
         }
 
         // Strzelanie
+        
         if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            if (currentLevel < 10) {
-                bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.01f;
+            if (pickupEffectActive) {
+                if (currentLevel < 10) {
+                    bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.007f;
+                }
+                else {
+                    bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.004f;
+                }
+               
             }
             else {
-                bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.005f;
+                if (currentLevel < 10) {
+                    bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.007f;
+                }
+                else {
+                    bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.004f;
+                }
             }
             
         }
@@ -354,7 +378,10 @@ int main() {
 
             if (it->active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
                 // Efekt po podniesieniu Pickupu
-                score += 1000 * currentLevel; // Nagroda punktowa (lub inny efekt)
+                score += 1000 * currentLevel;// Nagroda punktowa (lub inny efekt)
+                pickupEffectActive = true;
+                pickupEffectTimer = 10.0f;
+
                 it = pickups.erase(it); // Usuñ Pickup po kolizji
             }
             else if (!it->active) {
