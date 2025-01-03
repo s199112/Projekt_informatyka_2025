@@ -104,13 +104,15 @@ int main() {
         return -1; // Zakoñcz program, jeœli nie uda siê za³adowaæ tekstury
     }
     // Inicjalizacja gracza
-    sf::ConvexShape player;
-    player.setPointCount(3);
-    player.setPoint(0, sf::Vector2f(25, 0));
-    player.setPoint(1, sf::Vector2f(50, 50));
-    player.setPoint(2, sf::Vector2f(0, 50));
-    player.setFillColor(sf::Color::Blue);
-    player.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
+    sf::Texture playerTexture;
+    if (!playerTexture.loadFromFile("player.png")) { // Zmieñ "player.png" na nazwê pliku z grafik¹ gracza
+        std::cerr << "Failed to load player texture!" << std::endl;
+        return -1; // Zakoñcz program, jeœli nie uda siê za³adowaæ tekstury
+    }
+    sf::Sprite playerSprite;
+    playerSprite.setTexture(playerTexture);
+    playerSprite.setScale(0.07f, 0.07f); // Skalowanie
+    playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
 
     // Menu pocz¹tkowe
     bool inMenu = true;
@@ -196,22 +198,22 @@ int main() {
         }
 
         // Ruch gracza
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && player.getPosition().x > 0) {
-            player.move(-PLAYER_SPEED * deltaTime, 0);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && playerSprite.getPosition().x > 0) {
+            playerSprite.move(-PLAYER_SPEED * deltaTime, 0);
         }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && player.getPosition().x + 50 < WINDOW_WIDTH) {
-            player.move(PLAYER_SPEED * deltaTime, 0);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && playerSprite.getPosition().x + 50 < WINDOW_WIDTH) {
+            playerSprite.move(PLAYER_SPEED * deltaTime, 0);
         }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) && player.getPosition().y > 0) {
-            player.move(0, -PLAYER_SPEED * deltaTime);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) && playerSprite.getPosition().y > 0) {
+            playerSprite.move(0, -PLAYER_SPEED * deltaTime);
         }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) && player.getPosition().y + 50 < WINDOW_HEIGHT) {
-            player.move(0, PLAYER_SPEED * deltaTime);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) && playerSprite.getPosition().y + 50 < WINDOW_HEIGHT) {
+            playerSprite.move(0, PLAYER_SPEED * deltaTime);
         }
 
         // Strzelanie
         if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            bullets.emplace_back(player.getPosition().x + 25 - BULLET_SIZE.x / 2, player.getPosition().y);
+            bullets.emplace_back(playerSprite.getPosition().x + 25 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
             shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.01f;
         }
 
@@ -280,12 +282,12 @@ int main() {
         //odejmowanie ¿yæ
        
         for (auto& enemy : enemies) {
-            if (enemy.alive && enemy.getCollisionBounds().intersects(player.getGlobalBounds())) {
+            if (enemy.alive && enemy.getCollisionBounds().intersects(playerSprite.getGlobalBounds())) {
                 enemy.alive = false;
                 score += 10;
                 lives-=1;
                 backgroundColor = sf::Color::Red;    // Zmieñ t³o na czerwone
-                player.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
+                playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
                 backgroundFlashTimer = 0.3f;
                 
             }
@@ -314,7 +316,7 @@ int main() {
         
         if (allEnemiesDefeated) {
             currentLevel++;
-            player.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
+            playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
             if (enemyMoveCooldown > 0.1) {
                 enemyMoveCooldown -= 0.05f; // Zwiêkszenie szybkoœci ruchu
             }
@@ -328,7 +330,7 @@ int main() {
         window.clear(backgroundColor);
 
         // Rysowanie gracza
-        window.draw(player);
+        window.draw(playerSprite);
 
         // Rysowanie pocisków
         for (const auto& bullet : bullets) {
