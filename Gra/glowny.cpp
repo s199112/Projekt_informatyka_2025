@@ -334,7 +334,7 @@ int main() {
                     bullet.shape.setPosition(-100, -100); // Usuniêcie pocisku z ekranu
                     explosions.emplace_back(enemy.sprite.getPosition().x + ENEMY_SIZE, enemy.sprite.getPosition().y + ENEMY_SIZE);
                     // Generowanie Pickupów z prawdopodobieñstwem, jeœli limit nie zosta³ osi¹gniêty
-                    if (pickupsOnLevel < 5 && (std::rand() % 100) < 3) { // 30% szansa na wypadniêcie
+                    if (pickupsOnLevel < 4 && (std::rand() % 100) < 3) { // 3% szansa na wypadniêcie
                         pickups.emplace_back(enemy.sprite.getPosition().x+15, enemy.sprite.getPosition().y, pickupTexture);
                         pickupsOnLevel++;
                     }
