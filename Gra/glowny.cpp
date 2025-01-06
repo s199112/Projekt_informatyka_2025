@@ -37,7 +37,7 @@ float enemyMoveTimer = 0.0f;
 sf::Texture pickupTexture;
 
 int pickupsOnLevel = 0; // Licznik Pickupów na poziom
-bool pickupEffectActive = false; // Czy efekt jest aktywny
+bool pickupEffect1Active = false; // Czy efekt jest aktywny
 float pickupEffectTimer = 0.0f; // Pozosta³y czas efektu
 
 // Klasy do gry
@@ -234,14 +234,16 @@ int main() {
             continue;
         }
         // Aktualizacja efektu z pickupu
-        if (pickupEffectActive) {
+        if (pickupEffect1Active) {
             pickupEffectTimer -= deltaTime;
             if (pickupEffectTimer <= 0.0f) {
-                pickupEffectActive = false; // Wy³¹cz efekt po 10 sekundach
+                pickupEffect1Active = false; // Wy³¹cz efekt po 10 sekundach
             }
         }
 
         // Ruch gracza
+        
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && playerSprite.getPosition().x > 0) {
             playerSprite.move(-PLAYER_SPEED * deltaTime, 0);
         }
@@ -258,7 +260,7 @@ int main() {
         // Strzelanie
         
         if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            if (pickupEffectActive) {
+            if (pickupEffect1Active) {
                 if (currentLevel < 10) {
                     bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
                     bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
@@ -378,8 +380,8 @@ int main() {
 
             if (it->active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
                 // Efekt po podniesieniu Pickupu
-                score += 1000 * currentLevel;// Nagroda punktowa (lub inny efekt)
-                pickupEffectActive = true;
+                score += 1000 * currentLevel;// Nagroda
+                pickupEffect1Active = true;
                 pickupEffectTimer = 10.0f;
 
                 it = pickups.erase(it); // Usuñ Pickup po kolizji
@@ -460,7 +462,12 @@ int main() {
         sf::Text livesText("LIVES: " + std::to_string(lives), font, 20);
         livesText.setPosition(WINDOW_WIDTH/2, 10);
         window.draw(livesText);
-
+        if (pickupEffect1Active) {
+            sf::Text effectText("SHOOTING BOOST ACTIVE", font, 20);
+            effectText.setFillColor(sf::Color::Yellow);
+            effectText.setPosition(WINDOW_WIDTH / 2 - effectText.getGlobalBounds().width / 2, 50);
+            window.draw(effectText);
+        }
         window.display();
     }
 
