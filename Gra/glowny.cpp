@@ -35,9 +35,10 @@ float enemyMoveTimer = 0.0f;
 
 // Pickup
 sf::Texture pickupTexture;
-
 int pickupsOnLevel = 0; // Licznik Pickupów na poziom
-bool pickupEffect1Active = false; // Czy efekt jest aktywny
+bool pickupEffect1Active = false; // Czy efekt1 jest aktywny
+bool pickupEffect2Active = false; // Czy efekt2 jest aktywny
+bool pickupEffect3Active = false; // Czy efekt3 jest aktywny
 float pickupEffectTimer = 0.0f; // Pozosta³y czas efektu
 
 // Klasy do gry
@@ -112,7 +113,7 @@ public:
     }
 
     void update(float deltaTime) {
-        sprite.move(0, 100.0f * deltaTime); // Powolny ruch w dó³
+        sprite.move(0, 140.0f * deltaTime); // ruch w dó³
         if (sprite.getPosition().y > WINDOW_HEIGHT) {
             active = false; // Dezaktywacja, jeœli wyjdzie poza ekran
         }
@@ -234,33 +235,40 @@ int main() {
             continue;
         }
         // Aktualizacja efektu z pickupu
-        if (pickupEffect1Active) {
+        if (pickupEffect1Active|| pickupEffect2Active|| pickupEffect3Active) {
             pickupEffectTimer -= deltaTime;
             if (pickupEffectTimer <= 0.0f) {
-                pickupEffect1Active = false; // Wy³¹cz efekt po 10 sekundach
+                pickupEffect1Active = false;
+                pickupEffect2Active = false;
+                pickupEffect3Active = false;// Wy³¹cz efekt po 10 sekundach
             }
         }
 
         // Ruch gracza
-        
+        float currentPlayerSpeed = PLAYER_SPEED;
+        if (pickupEffect2Active) {
+            currentPlayerSpeed *= 1.8f;//zwiekszenie predkoœci
+        }
+
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && playerSprite.getPosition().x > 0) {
-            playerSprite.move(-PLAYER_SPEED * deltaTime, 0);
+            playerSprite.move(-currentPlayerSpeed * deltaTime, 0);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && playerSprite.getPosition().x + 50 < WINDOW_WIDTH) {
-            playerSprite.move(PLAYER_SPEED * deltaTime, 0);
+            playerSprite.move(currentPlayerSpeed * deltaTime, 0);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) && playerSprite.getPosition().y > 0) {
-            playerSprite.move(0, -PLAYER_SPEED * deltaTime);
+            playerSprite.move(0, -currentPlayerSpeed * deltaTime);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) && playerSprite.getPosition().y + 50 < WINDOW_HEIGHT) {
-            playerSprite.move(0, PLAYER_SPEED * deltaTime);
+            playerSprite.move(0, currentPlayerSpeed * deltaTime);
         }
 
         // Strzelanie
         
         if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
             if (pickupEffect1Active) {
+
                 if (currentLevel < 10) {
                     bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
                     bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
@@ -269,18 +277,32 @@ int main() {
                 else {
                     bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
                     bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.004f;
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.005f;
                 }
                
+            }
+            else if (pickupEffect1Active && pickupEffect3Active) {
+                if (currentLevel < 10) {
+                    bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y -10);
+                    bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.006f;
+                }
+                else {
+                    bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y-10);
+                    bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.004f;
+                }
             }
             else {
                 if (currentLevel < 10) {
                     bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.007f;
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.008f;
                 }
                 else {
                     bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.004f;
+                    shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.006f;
                 }
             }
             
@@ -381,8 +403,20 @@ int main() {
             if (it->active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
                 // Efekt po podniesieniu Pickupu
                 score += 1000 * currentLevel;// Nagroda
-                pickupEffect1Active = true;
-                pickupEffectTimer = 10.0f;
+                if (pickupsOnLevel < 4 && (std::rand() % 100) < 50) {
+                    if (pickupEffect1Active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
+                        pickupEffect3Active = true; //efekt3 - strzelanie 3
+                        pickupEffectTimer = 10.0f;
+                    }
+
+                        pickupEffect1Active = true; //efekt1 - strzelanie 2
+                        pickupEffectTimer = 10.0f;
+                    
+                }
+                else {
+                    pickupEffect2Active = true; //efekt2 - szybkoœæ
+                    pickupEffectTimer = 10.0f;
+                }
 
                 it = pickups.erase(it); // Usuñ Pickup po kolizji
             }
@@ -463,10 +497,16 @@ int main() {
         livesText.setPosition(WINDOW_WIDTH/2, 10);
         window.draw(livesText);
         if (pickupEffect1Active) {
-            sf::Text effectText("SHOOTING BOOST ACTIVE", font, 20);
-            effectText.setFillColor(sf::Color::Yellow);
-            effectText.setPosition(WINDOW_WIDTH / 2 - effectText.getGlobalBounds().width / 2, 50);
-            window.draw(effectText);
+            sf::Text effect1Text("SHOOTING BOOST ACTIVE", font, 20);
+            effect1Text.setFillColor(sf::Color::Red);
+            effect1Text.setPosition(WINDOW_WIDTH / 2 - effect1Text.getGlobalBounds().width / 2, 50);
+            window.draw(effect1Text);
+        }
+        if (pickupEffect2Active) {
+            sf::Text effect2Text("SPEED BOOST ACTIVE", font, 20);
+            effect2Text.setFillColor(sf::Color::Yellow);
+            effect2Text.setPosition(WINDOW_WIDTH / 2 - effect2Text.getGlobalBounds().width / 2, 30);
+            window.draw(effect2Text);
         }
         window.display();
     }
