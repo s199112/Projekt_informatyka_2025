@@ -267,7 +267,7 @@ int main() {
         // Strzelanie
         
         if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            if (pickupEffect1Active && !pickupEffect1Active) {
+            if (pickupEffect1Active && !pickupEffect3Active) {
 
                 if (currentLevel < 10) {
                     bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
@@ -437,6 +437,11 @@ int main() {
                     endText.setString("Game Over! \nFinal Score: " + std::to_string(score));
                     endText.setPosition(WINDOW_WIDTH / 2 - endText.getGlobalBounds().width / 2, WINDOW_HEIGHT / 2);
                 }
+            }
+            else if (currentLevel >= 23) {
+                gameEnded = true;
+                endText.setString("YOU WIN!CONGRATULATIONS!! \nFinal Score: " + std::to_string(score));
+                endText.setPosition(WINDOW_WIDTH / 2 - endText.getGlobalBounds().width / 2, WINDOW_HEIGHT / 2);
             }
         } 
        
