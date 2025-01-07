@@ -267,7 +267,7 @@ int main() {
         // Strzelanie
         
         if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-            if (pickupEffect1Active) {
+            if (pickupEffect1Active && !pickupEffect1Active) {
 
                 if (currentLevel < 10) {
                     bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
@@ -385,7 +385,7 @@ int main() {
                 lives-=1;
                 backgroundColor = sf::Color::Red;    // Zmieñ t³o na czerwone
                 playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
-                backgroundFlashTimer = 0.3f;
+                backgroundFlashTimer = 0.3f;//czas trwania zmiany t³a
                 
             }
         }
@@ -487,8 +487,7 @@ int main() {
         window.draw(scoreText);
         sf::Text debugText("", font, 15);
         debugText.setPosition(10, 40);
-        debugText.setString("Enemies remaining: " + std::to_string(std::count_if(enemies.begin(), enemies.end(),[](const Enemy& e) { return e.alive; })));
-            
+        debugText.setString("Enemies remaining: " + std::to_string(std::count_if(enemies.begin(), enemies.end(),[](const Enemy& e) { return e.alive; })));    
         window.draw(debugText);
         sf::Text lvlText("LEVEL: " + std::to_string(currentLevel), font, 20);
         lvlText.setPosition(WINDOW_WIDTH-120, 10);
