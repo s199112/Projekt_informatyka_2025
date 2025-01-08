@@ -16,6 +16,9 @@ const sf::Vector2f BULLET_SIZE(5, 10);
 int lives= 5;
 int currentLevel = 1;
 
+std::string playerName = "";
+bool isEnteringName = true; // Czy gracz wprowadza imiê
+
 
 // Pocisk
 const float BULLET_SPEED = 300.0f;
@@ -42,6 +45,8 @@ bool pickupEffect3Active = false; // Czy efekt3 jest aktywny
 float pickupEffectTimer = 0.0f; // Pozosta³y czas efektu
 
 // Klasy do gry
+
+//Pocisk
 class Bullet {
 public:
     sf::RectangleShape shape;
@@ -55,7 +60,7 @@ public:
         shape.move(0, -BULLET_SPEED * deltaTime);
     }
 };
-
+//Przeciwnik
 class Enemy {
 public:
     sf::Sprite sprite;
@@ -78,7 +83,7 @@ public:
         return bounds;
     }
 };
-//eksplozje
+//Eksplozje
 class Explosion {
 public:
     sf::CircleShape shape;
@@ -208,18 +213,42 @@ int main() {
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
+            if (isEnteringName) {
+                if (event.type == sf::Event::TextEntered) {
+                    if (event.text.unicode == '\b') { // Obs³uga backspace
+                        if (!playerName.empty()) {
+                            playerName.pop_back();
+                        }
+                    }
+                    else if (event.text.unicode == '\r') { // Obs³uga Enter
+                        isEnteringName = false; // Zakoñczenie wprowadzania imienia
+                    }
+                    else if (playerName.size() < 15 && std::isprint(event.text.unicode)) {
+                        playerName += static_cast<char>(event.text.unicode); // Dodaj znak
+                    }
+                }
+            }
         }
 
         // Menu pocz¹tkowe
         if (inMenu) {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter)) {
+            if (!isEnteringName && sf::Keyboard::isKeyPressed(sf::Keyboard::Enter)) {
                 inMenu = false;
             }
-
+          
             // Renderowanie menu
+            sf::Text namePrompt("Enter your name:", font, 30);
+            namePrompt.setPosition(WINDOW_WIDTH / 2 - namePrompt.getGlobalBounds().width / 2, 200);
+            sf::Text playerNameText(playerName, font, 30);
+            playerNameText.setPosition(WINDOW_WIDTH / 2 - playerNameText.getGlobalBounds().width / 2, 250);
+
             window.clear();
             window.draw(title);
             window.draw(startText);
+            if (isEnteringName) {
+                window.draw(namePrompt);
+                window.draw(playerNameText);
+            }
             window.display();
             continue;
         }
@@ -449,6 +478,9 @@ int main() {
         if (allEnemiesDefeated) {
             currentLevel++;
             pickups.clear(); // Usuñ wszystkie pozosta³e Pickupy
+            for (auto it = bullets.begin(); it != bullets.end();) {
+                it = bullets.erase(it);
+            }
             pickupsOnLevel = 0; // Zresetuj licznik
             playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
             if (enemyMoveCooldown > 0.1) {
