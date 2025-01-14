@@ -4,6 +4,8 @@
 #include <ctime>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <fstream>
 
 // Rozmiary okna gry
 const int WINDOW_WIDTH = 1000;
@@ -129,6 +131,113 @@ public:
     }
 };
 
+class Scoreboard {
+public:
+    static Scoreboard& getInstance() {
+        static Scoreboard instance("scores.txt");
+        return instance;
+    }
+
+    void addScore(const std::string& name, int score) {
+        // Dodanie wyniku do listy
+        scores.emplace_back(name, score);
+
+        // Posortowanie wyników (malej¹co po punkcie)
+        std::sort(scores.begin(), scores.end(), [](const auto& a, const auto& b) {
+            return b.second < a.second; // Sortowanie po wynikach malej¹co
+            });
+
+        // Ograniczenie do 50 najlepszych wyników
+        if (scores.size() >50) {
+            scores.pop_back(); // Trzymaj tylko top 50 wyników
+        }
+
+        save();
+    }
+
+    void draw(sf::RenderWindow& window, const sf::Font& font, const std::string& playerName, int playerScore) {
+        // Wyœwietlanie top 3 wyników
+        sf::Text title("Top 3 Scores", font, 35);
+        title.setFillColor(sf::Color::White);
+        title.setPosition(WINDOW_WIDTH/2 - title.getGlobalBounds().width/2, 50);
+        window.draw(title);
+
+        for (size_t i = 0; i < std::min(scores.size(), size_t(3)); ++i) {
+            sf::Text scoreText(std::to_string(i + 1) + ". " + scores[i].first + ": " + std::to_string(scores[i].second),
+                font, 20);
+            scoreText.setFillColor(sf::Color::White);
+            scoreText.setPosition(WINDOW_WIDTH / 2 - scoreText.getGlobalBounds().width / 2, 100 + i * 30);
+            window.draw(scoreText);
+        }
+
+        // Wyœwietlanie wyniku gracza
+        sf::Text playerText("Your Score: " + std::to_string(playerScore), font, 30);
+        playerText.setFillColor(sf::Color::Cyan);
+        playerText.setPosition(WINDOW_WIDTH / 2 - playerText.getGlobalBounds().width / 2, 200);
+        window.draw(playerText);
+
+        // Wyœwietlanie miejsca gracza
+
+        int rank = getPlayerRank(playerName, playerScore);
+        if (rank != -1) {
+            sf::Text rankText("Your Rank: #" + std::to_string(rank), font, 25);
+            rankText.setFillColor(sf::Color::Yellow);
+            rankText.setPosition(WINDOW_WIDTH / 2 - rankText.getGlobalBounds().width / 2, 240);
+            window.draw(rankText);
+        }
+    }
+
+    // £adowanie wyników z pliku
+    void load() {
+        std::ifstream inFile(filename);
+        if (!inFile) {
+            std::cerr << "Could not load scores file.\n";
+            return;
+        }
+
+        std::string name;
+        int score;
+        while (inFile >> name >> score) {
+            scores.emplace_back(name, score); // Wczytywanie nazw i punktów
+        }
+    }
+
+private:
+    std::string filename;
+    std::vector<std::pair<std::string, int>> scores;
+
+    Scoreboard(const std::string& file) : filename(file) {
+        load(); // £adowanie wyników z pliku przy starcie gry
+    }
+
+    void save() const {
+        std::ofstream outFile(filename, std::ios::trunc); // Trunc - nadpisanie pliku
+        if (!outFile) {
+            std::cerr << "Could not save scores file.\n";
+            return;
+        }
+
+        // Zapisanie wyników do pliku
+        for (const auto& pair : scores) {
+            outFile << pair.first << " " << pair.second << "\n";
+        }
+    }
+
+    // Usuwamy mo¿liwoœæ kopiowania i przypisania
+    Scoreboard(const Scoreboard&) = delete;
+    Scoreboard& operator=(const Scoreboard&) = delete;
+    
+    int getPlayerRank(const std::string& playerName, int playerScore) {
+        for (size_t i = 0; i < scores.size(); ++i) {
+            if (scores[i].first == playerName && scores[i].second == playerScore) {
+                return i + 1; // Ranking gracza (1-based index)
+            }
+        }
+
+        return -1; // Jeœli gracz nie znajduje siê w tabeli
+    }
+};
+
 int main() {
     // Inicjalizacja okna gry
     sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Space Invaders");
@@ -160,15 +269,15 @@ int main() {
     bool inMenu = true;
     sf::Font font;
     font.loadFromFile("arial.ttf"); // Plik czcionki
-    sf::Text title("Space Invaders", font, 50);
+    sf::Text title("Kosmiczni Bandyci", font, 50);
     title.setPosition(WINDOW_WIDTH / 2 - title.getGlobalBounds().width / 2, 100);
     sf::Text startText("Press Enter to Start", font, 30);
     startText.setPosition(WINDOW_WIDTH / 2 - startText.getGlobalBounds().width / 2, 300);
 
     // Ekran koñcowy
     bool gameEnded = false;
-    sf::Text endText("", font, 30);
-    endText.setPosition(WINDOW_WIDTH / 2 - endText.getGlobalBounds().width / 2, WINDOW_HEIGHT / 2);
+    sf::Text endText("", font, 50);
+    bool scoreSaved = false;
 
     // Kontenery na pociski, wrogów i eksplozje
     std::vector<Bullet> bullets;
@@ -205,7 +314,7 @@ int main() {
 
     // Zegar gry
     sf::Clock clock;
-
+    
     while (window.isOpen()) {
         // Obs³uga zdarzeñ
         sf::Event event;
@@ -257,12 +366,7 @@ int main() {
         float deltaTime = clock.restart().asSeconds();
         enemyMoveTimer += deltaTime;
 
-        if (gameEnded) {
-            window.clear();
-            window.draw(endText);
-            window.display();
-            continue;
-        }
+
         // Aktualizacja efektu z pickupu
         if (pickupEffect1Active|| pickupEffect2Active|| pickupEffect3Active) {
             pickupEffectTimer -= deltaTime;
@@ -431,7 +535,7 @@ int main() {
 
             if (it->active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
                 // Efekt po podniesieniu Pickupu
-                score += 1000 * currentLevel;// Nagroda
+                score += 500 * currentLevel;// Nagroda
                 if (pickupsOnLevel < 4 && (std::rand() % 100) < 50) {
                     if (pickupEffect1Active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
                         pickupEffect3Active = true; //efekt3 - strzelanie 3
@@ -463,16 +567,37 @@ int main() {
                 allEnemiesDefeated = false;
                 if (enemy.sprite.getPosition().y + ENEMY_SIZE * 2 >= WINDOW_HEIGHT||lives<=0) {
                     gameEnded = true;
-                    endText.setString("Game Over! \nFinal Score: " + std::to_string(score));
+                    endText.setString("Game Over!");
                     endText.setPosition(WINDOW_WIDTH / 2 - endText.getGlobalBounds().width / 2, WINDOW_HEIGHT / 2);
+                                        
                 }
             }
             else if (currentLevel >= 23) {
-                gameEnded = true;
-                endText.setString("YOU WIN!CONGRATULATIONS!! \nFinal Score: " + std::to_string(score));
+                gameEnded = true;                
+                endText.setString("YOU WIN!CONGRATULATIONS!!");
                 endText.setPosition(WINDOW_WIDTH / 2 - endText.getGlobalBounds().width / 2, WINDOW_HEIGHT / 2);
+                                
             }
         } 
+        
+
+        if (gameEnded) {
+            window.clear();
+
+            // Dodanie wyniku gracza do tablicy wyników, jeœli jeszcze tego nie zrobiliœmy
+            if (!scoreSaved) {
+                Scoreboard::getInstance().addScore(playerName, score);
+                scoreSaved = true; // Zapobiegaj zapisowi wielokrotnemu
+            }
+
+            // Wyœwietlenie tablicy wyników
+            Scoreboard::getInstance().draw(window, font, playerName, score);
+            window.draw(endText);
+            window.display();
+            continue;
+        }
+            
+
        
         
         if (allEnemiesDefeated) {
