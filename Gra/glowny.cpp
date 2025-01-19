@@ -11,32 +11,34 @@
 #include <algorithm>
 #include <fstream>
 #include "Scoreboard.cpp"
-#include "Bullet.cpp"
 #include "Enemy.cpp"
 #include "Pickups.cpp"
 #include "Explosions.cpp"
 #include "Pause.cpp"
+#include "GameState.cpp"
+#include "EnemyBullets.cpp"
+#include "Player.cpp"
 
 
 // Rozmiary okna gry
-const int WINDOW_WIDTH = 1000;
-const int WINDOW_HEIGHT = 700;
+const int WINDOW_WIDTH = 1200;
+const int WINDOW_HEIGHT = 800;
 
 
 // Gracz
 const float PLAYER_SPEED = 200.0f;
-const sf::Vector2f BULLET_SIZE(5, 10);
 int lives= 5;
 int currentLevel = 1;
 
 std::string playerName = "";
-bool isEnteringName = true; // Czy gracz wprowadza imiê
+bool isEnteringName = false; // Czy gracz wprowadza imiê
 
 
 // Pocisk
 const float BULLET_SPEED = 300.0f;
 float shootCooldown = 0.0f; // Pocz¹tkowy cooldown w sekundach
 const float SHOOT_COOLDOWN_TIME = 0.3f; // Sta³y czas pomiêdzy strza³ami 
+
 
 
 // Wrogowie
@@ -58,18 +60,26 @@ bool pickupEffect3Active = false; // Czy efekt3 jest aktywny
 float pickupEffectTimer = 0.0f; // Pozosta³y czas efektu
 
 // Klasy do gry
+
+//Player
+
  
 //Pocisk
 
-//Przeciwnik
+// Przeciwnik
 
-//Eksplozje
+// Eksplozje
 
 // Pickupy
 
 // Scoreboard
 
-//Pauza
+// Pauza
+
+//zapis i ³adowanie
+
+//strza³y przeciwników
+
 
 int main() {
     // Inicjalizacja okna gry
@@ -88,25 +98,28 @@ int main() {
         std::cerr << "Failed to load player texture!" << std::endl;
         return -1; // Zakoñcz program, jeœli nie uda siê za³adowaæ tekstury
     }
-    sf::Sprite playerSprite;
-    playerSprite.setTexture(playerTexture);
-    playerSprite.setScale(0.07f, 0.07f); // Skalowanie
-    playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
+    Player player(playerTexture);
+    
 
     //inicjalizacja pickupów
     if (!pickupTexture.loadFromFile("pickup.png")) { 
         std::cerr << "Failed to load pickup texture!" << std::endl;
         return -1;
     }
+    //inicjacja pocisków przeciwnika
+    sf::Texture EB;
+    if (!EB.loadFromFile("EB.png")) {
+        std::cerr << "Failed to load EnemyBullet texture!" << std::endl;
+        return -1;
+    }
+    // inicjacja zapisu gry
+    GameState gameState;
 
     // Menu pocz¹tkowe
     bool inMenu = true;
     sf::Font font;
     font.loadFromFile("arial.ttf"); // Plik czcionki
-    sf::Text title("Kosmiczni Bandyci", font, 50);
-    title.setPosition(WINDOW_WIDTH / 2 - title.getGlobalBounds().width / 2, 100);
-    sf::Text startText("Press Enter to Start", font, 30);
-    startText.setPosition(WINDOW_WIDTH / 2 - startText.getGlobalBounds().width / 2, 300);
+    
 
     // Flaga kontroluj¹ca stan pauzy
     bool isPaused = false;
@@ -117,12 +130,15 @@ int main() {
     bool gameEnded = false;
     sf::Text endText("", font, 50);
     bool scoreSaved = false;
+    bool gameLoaded = false;
 
-    // Kontenery na pociski, wrogów i eksplozje
+    // Kontenery 
+    
     std::vector<Bullet> bullets;
     std::vector<Enemy> enemies;
     std::vector<Explosion> explosions;
     std::vector<Pickup> pickups;
+    std::vector<EnemyBullet> EnemyBullets;
     //kolor t³a
     sf::Color backgroundColor = sf::Color::Black; // Domyœlny kolor t³a
     float backgroundFlashTimer = 0.0f;           // Czas trwania czerwonego t³a
@@ -142,7 +158,7 @@ int main() {
                 enemies.emplace_back(startX + col * spacingX, startY + row * spacingY, enemyTexture);
             }
         }
-        };
+    };
 
     initializeEnemies();
 
@@ -168,9 +184,11 @@ int main() {
                             playerName.pop_back();
                         }
                     }
+
                     else if (event.text.unicode == '\r') { // Obs³uga Enter
                         
-                        isEnteringName = false; // Zakoñczenie wprowadzania imienia
+                        isEnteringName = false;
+                        inMenu = false;// Zakoñczenie wprowadzania imienia
                     }
                     else if (playerName.size() < 15 && std::isprint(event.text.unicode)) {
                         playerName += static_cast<char>(event.text.unicode); // Dodaj znak
@@ -182,19 +200,33 @@ int main() {
         // Menu pocz¹tkowe
         if (inMenu) {
             if (!isEnteringName && sf::Keyboard::isKeyPressed(sf::Keyboard::Enter)) {
-                inMenu = false;
+               isEnteringName = true;
             }
           
             // Renderowanie menu
+            sf::Text title("Kosmiczni Bandyci", font, 50);
+            title.setPosition(WINDOW_WIDTH / 2 - title.getGlobalBounds().width / 2, 100);
+            sf::Text startText("Press Enter to Start", font, 30);
+            startText.setPosition(WINDOW_WIDTH / 2 - startText.getGlobalBounds().width / 2, 300);
             sf::Text namePrompt("Enter your name:", font, 30);
             namePrompt.setPosition(WINDOW_WIDTH / 2 - namePrompt.getGlobalBounds().width / 2, 200);
             sf::Text playerNameText(playerName, font, 30);
             playerNameText.setPosition(WINDOW_WIDTH / 2 - playerNameText.getGlobalBounds().width / 2, 250);
+            sf::Text loadText;
+            loadText.setFont(font);
+            loadText.setString("Press [L] to LOAD");
+            loadText.setCharacterSize(30);
+            loadText.setFillColor(sf::Color::Blue);
+            loadText.setPosition(window.getSize().x / 2 - loadText.getGlobalBounds().width / 2, 400);
 
-            window.clear();
-            window.draw(title);
-            window.draw(startText);
-            if (isEnteringName) {
+            if (!isEnteringName) {
+                window.clear();
+                window.draw(title);
+                window.draw(startText);
+                window.draw(loadText);
+            }
+            else if (isEnteringName) {
+                window.clear();
                 window.draw(namePrompt);
                 window.draw(playerNameText);
             }
@@ -214,13 +246,44 @@ int main() {
                     isRunning = false; // Wyjœcie z gry
                 }
             }
-        
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+                gameState.setState(playerName, score, lives, currentLevel);
+                gameState.saveToFile("savegame.txt");
+                bool gameLoaded = false;
+                backgroundColor = sf::Color::Cyan;    // Zmieñ t³o na czerwone
+                backgroundFlashTimer = 0.3f;//czas trwania zmiany t³a
+            }
+            if (inMenu||isPaused&& sf::Keyboard::isKeyPressed(sf::Keyboard::L)) {
+                if (gameState.loadFromFile("savegame.txt")) {
+                    playerName = gameState.getPlayerName();
+                    score = gameState.getScore();
+                    lives = gameState.getLives();
+                    currentLevel = gameState.getLevel();
+                    
+                }
+                bool gameLoaded = true;
+                backgroundColor = sf::Color::Blue;    // Zmieñ t³o na czerwone
+                backgroundFlashTimer = 0.3f;
+                for (auto& enemy : enemies) {
+                    enemy.alive = false; //czas trwania zmiany t³a
+                }
+                initializeEnemies();
+            }
 
         // Delta time
         float deltaTime = clock.restart().asSeconds();
         enemyMoveTimer += deltaTime;
 
-        if (!isPaused) {
+        //czas zmainy ekranu
+        if (backgroundFlashTimer > 0.0f) {
+            backgroundFlashTimer -= deltaTime;
+            if (backgroundFlashTimer <= 0.0f) {
+                backgroundColor = sf::Color::Black; // Przywróæ domyœlny kolor t³a
+            }
+        }
+
+        if (!isPaused&&!gameEnded) {
             // Aktualizacja efektu z pickupu
             if (pickupEffect1Active || pickupEffect2Active || pickupEffect3Active) {
                 pickupEffectTimer -= deltaTime;
@@ -238,78 +301,12 @@ int main() {
             }
 
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && playerSprite.getPosition().x > 0) {
-                playerSprite.move(-currentPlayerSpeed * deltaTime, 0);
-            }
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && playerSprite.getPosition().x + 50 < WINDOW_WIDTH) {
-                playerSprite.move(currentPlayerSpeed * deltaTime, 0);
-            }
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up) && playerSprite.getPosition().y > 0) {
-                playerSprite.move(0, -currentPlayerSpeed * deltaTime);
-            }
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down) && playerSprite.getPosition().y + 50 < WINDOW_HEIGHT) {
-                playerSprite.move(0, currentPlayerSpeed * deltaTime);
-            }
+            player.PlayerMove(currentPlayerSpeed, deltaTime);
 
             // Strzelanie
-
-            if (shootCooldown <= 0.0f && sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
-                if (pickupEffect1Active && !pickupEffect3Active) {
-
-                    if (currentLevel < 10) {
-                        bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.007f;
-                    }
-                    else {
-                        bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.005f;
-                    }
-
-                }
-                else if (pickupEffect1Active && pickupEffect3Active) {
-                    if (currentLevel < 10) {
-                        bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y - 10);
-                        bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.006f;
-                    }
-                    else {
-                        bullets.emplace_back(playerSprite.getPosition().x + 14 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y - 10);
-                        bullets.emplace_back(playerSprite.getPosition().x + 42 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.004f;
-                    }
-                }
-                else {
-                    if (currentLevel < 10) {
-                        bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.008f;
-                    }
-                    else {
-                        bullets.emplace_back(playerSprite.getPosition().x + 28 - BULLET_SIZE.x / 2, playerSprite.getPosition().y);
-                        shootCooldown = SHOOT_COOLDOWN_TIME - currentLevel * 0.006f;
-                    }
-                }
-
-            }
-
-            // Aktualizacja cooldownu
-            if (shootCooldown > 0.0f) {
-                shootCooldown -= deltaTime;
-            }
-
-            // Aktualizacja pocisków
-            for (auto it = bullets.begin(); it != bullets.end();) {
-                it->update(deltaTime);
-                if (it->shape.getPosition().y < 0) {
-                    it = bullets.erase(it);
-                }
-                else {
-                    ++it;
-                }
-            }
+            
+            player.shooting(shootCooldown, deltaTime, bullets, pickupEffect1Active, pickupEffect3Active, currentLevel);
+            
 
             // Aktualizacja wrogów
             if (enemyMoveTimer >= enemyMoveCooldown) {
@@ -323,7 +320,12 @@ int main() {
                         if (enemy.sprite.getPosition().x + ENEMY_SIZE * 5 > WINDOW_WIDTH - 5 || enemy.sprite.getPosition().x - ENEMY_SIZE * 2 < 0) {
                             changeDirection = true;
                         }
+                        if (currentLevel>=3 &&(std::rand() % 100) < 0.05 * currentLevel) { // 3% szansa na wypadniêcie
+                            EnemyBullets.emplace_back(enemy.sprite.getPosition().x + 15, enemy.sprite.getPosition().y, EB);
+
+                        }
                     }
+                    
                 }
 
                 if (changeDirection) {
@@ -345,7 +347,7 @@ int main() {
                         bullet.shape.setPosition(-100, -100); // Usuniêcie pocisku z ekranu
                         explosions.emplace_back(enemy.sprite.getPosition().x + ENEMY_SIZE, enemy.sprite.getPosition().y + ENEMY_SIZE);
                         // Generowanie Pickupów z prawdopodobieñstwem, jeœli limit nie zosta³ osi¹gniêty
-                        if (pickupsOnLevel < 4 && (std::rand() % 100) < 3) { // 3% szansa na wypadniêcie
+                        if (pickupsOnLevel < 4 && (std::rand() % 100) < 5) { // 3% szansa na wypadniêcie
                             pickups.emplace_back(enemy.sprite.getPosition().x + 15, enemy.sprite.getPosition().y, pickupTexture);
                             pickupsOnLevel++;
                         }
@@ -366,32 +368,45 @@ int main() {
             //odejmowanie ¿yæ
 
             for (auto& enemy : enemies) {
-                if (enemy.alive && enemy.getCollisionBounds().intersects(playerSprite.getGlobalBounds())) {
+                if (enemy.alive && enemy.getCollisionBounds().intersects(player.getBounds())) {
                     enemy.alive = false;
                     score += 10;
                     lives -= 1;
+
+                    player.setPosition();
                     backgroundColor = sf::Color::Red;    // Zmieñ t³o na czerwone
-                    playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
                     backgroundFlashTimer = 0.3f;//czas trwania zmiany t³a
 
                 }
             }
 
-            if (backgroundFlashTimer > 0.0f) {
-                backgroundFlashTimer -= deltaTime;
-                if (backgroundFlashTimer <= 0.0f) {
-                    backgroundColor = sf::Color::Black; // Przywróæ domyœlny kolor t³a
+
+            //aktualizacja i kolizje bomb
+            for (auto it = EnemyBullets.begin(); it != EnemyBullets.end();) {
+                it->update(deltaTime);
+                if (it->active && it->getBounds().intersects(player.getBounds())) {
+                    lives -= 1;
+                    score -= 250 * currentLevel;
+                    backgroundColor = sf::Color::Red;    // Zmieñ t³o na czerwone
+                    backgroundFlashTimer = 0.3f;//czas trwania zmiany t³a
+                    it = EnemyBullets.erase(it);
+                }
+                else if (!it->active) {
+                    it = EnemyBullets.erase(it); // Usuñ nieaktywne
+                }
+                else {
+                    ++it;
                 }
             }
             // Aktualizacja i kolizje Pickupów
             for (auto it = pickups.begin(); it != pickups.end();) {
                 it->update(deltaTime);
 
-                if (it->active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
+                if (it->active && it->getBounds().intersects(player.getBounds())) {
                     // Efekt po podniesieniu Pickupu
                     score += 500 * currentLevel;// Nagroda
                     if (pickupsOnLevel < 4 && (std::rand() % 100) < 50) {
-                        if (pickupEffect1Active && it->getBounds().intersects(playerSprite.getGlobalBounds())) {
+                        if (pickupEffect1Active && it->getBounds().intersects(player.getBounds())) {
                             pickupEffect3Active = true; //efekt3 - strzelanie 3
                             pickupEffectTimer = 10.0f;
                         }
@@ -427,13 +442,13 @@ int main() {
                                         
                 }
             }
-            else if (currentLevel >= 23) {
+            else if (currentLevel == 20) {
                 gameEnded = true;                
                 endText.setString("YOU WIN!CONGRATULATIONS!!");
                 endText.setPosition(WINDOW_WIDTH / 2 - endText.getGlobalBounds().width / 2, WINDOW_HEIGHT / 2);
                                 
             }
-        } 
+        }
         
 
         if (gameEnded) {
@@ -458,16 +473,16 @@ int main() {
         if (allEnemiesDefeated) {
             currentLevel++;
             pickups.clear(); // Usuñ wszystkie pozosta³e Pickupy
+            EnemyBullets.clear();
             for (auto it = bullets.begin(); it != bullets.end();) {
                 it = bullets.erase(it);
             }
             pickupsOnLevel = 0; // Zresetuj licznik
-            playerSprite.setPosition(WINDOW_WIDTH / 2 - 25, WINDOW_HEIGHT - 60);
-            if (enemyMoveCooldown > 0.1) {
-                enemyMoveCooldown -= 0.05f; // Zwiêkszenie szybkoœci ruchu
-            }
-            else {
-                enemyMoveCooldown -= 0.01f;
+            player.setPosition();
+            if (currentLevel <= 10) {
+                if (enemyMoveCooldown > 0.1) {
+                    enemyMoveCooldown -= 0.04f; // Zwiêkszenie szybkoœci ruchu
+                }
             }
             initializeEnemies();
         }
@@ -477,7 +492,7 @@ int main() {
 
         if (!isPaused) {
             // Rysowanie gracza
-            window.draw(playerSprite);
+            window.draw(player.playerSprite);
 
             // Rysowanie pocisków
             for (const auto& bullet : bullets) {
@@ -498,6 +513,10 @@ int main() {
             for (const auto& pickup : pickups) {
                 window.draw(pickup.sprite);
             }
+            //
+            for (const auto& EB : EnemyBullets) {
+                window.draw(EB.sprite);
+            }
 
             // Wyœwietlanie punktów, przeciwników, LVL i ¿yæ
             sf::Text scoreText("SCORE: " + std::to_string(score), font, 20);
@@ -511,8 +530,11 @@ int main() {
             lvlText.setPosition(WINDOW_WIDTH - 120, 10);
             window.draw(lvlText);
             sf::Text livesText("LIVES: " + std::to_string(lives), font, 20);
-            livesText.setPosition(WINDOW_WIDTH / 2, 10);
+            livesText.setPosition(WINDOW_WIDTH - 120, 30);
             window.draw(livesText);
+            sf::Text playerOn(playerName, font, 20);
+            playerOn.setPosition(WINDOW_WIDTH / 2 - playerOn.getGlobalBounds().width / 2, 10);
+            window.draw(playerOn);
             if (pickupEffect1Active) {
                 sf::Text effect1Text("SHOOTING BOOST ACTIVE", font, 20);
                 effect1Text.setFillColor(sf::Color::Red);
