@@ -15,7 +15,7 @@ private:
 
 public:
     PauseMenu(sf::RenderWindow& window) {
-        if (!font.loadFromFile("arial.ttf")) {
+        if (!font.loadFromFile("Retro Gaming.ttf")) {
             std::cerr << "Failed to load font.\n";
         }
 
@@ -61,4 +61,54 @@ public:
         window.draw(saveText);
         window.draw(loadText);
     }
+};
+class Exit {
+private:
+    sf::Font font;
+    sf::Text exitText;
+    sf::Text EcontinueText;
+    sf::Text ExitText;
+
+
+    sf::RectangleShape background;
+
+public:
+    Exit(sf::RenderWindow& window) {
+        if (!font.loadFromFile("Retro Gaming.ttf")) {
+            std::cerr << "Failed to load font.\n";
+        }
+
+        exitText.setFont(font);
+        exitText.setString("Do you want to Exit?");
+        exitText.setCharacterSize(50);
+        exitText.setFillColor(sf::Color::White);
+        exitText.setPosition(window.getSize().x / 2 - exitText.getGlobalBounds().width / 2, 100);
+
+        EcontinueText.setFont(font);
+        EcontinueText.setString("NOO:   Press [C] to Continue");
+        EcontinueText.setCharacterSize(30);
+        EcontinueText.setFillColor(sf::Color::Green);
+        EcontinueText.setPosition(window.getSize().x / 2 - EcontinueText.getGlobalBounds().width / 2, 200);
+
+        ExitText.setFont(font);
+        ExitText.setString("YES:   Press [Esc] to Exit");
+        ExitText.setCharacterSize(30);
+        ExitText.setFillColor(sf::Color::Red);
+        ExitText.setPosition(window.getSize().x / 2 - ExitText.getGlobalBounds().width / 2, 250);
+
+
+
+        background.setSize(sf::Vector2f(window.getSize()));
+        background.setFillColor(sf::Color(0, 0, 0)); // Pó³przezroczyste t³o
+    }
+
+    void draw(sf::RenderWindow& window) {
+        window.draw(background);
+        window.draw(exitText);
+        window.draw(EcontinueText);
+        window.draw(ExitText);
+
+
+    }
+
 };
