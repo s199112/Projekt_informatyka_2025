@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Background.cpp" />
     <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="EnemyBullets.cpp" />
     <ClCompile Include="Explosions.cpp" />
@@ -137,6 +138,7 @@
     <ClCompile Include="glowny.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="HelpMenu.cpp" />
     <ClCompile Include="Pause.cpp" />
     <ClCompile Include="Pickups.cpp" />
     <ClCompile Include="Player.cpp" />
